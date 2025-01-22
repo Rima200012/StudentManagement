@@ -1,123 +1,74 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Paper,
-  Typography,
-  Tooltip,
-  Box,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Button
-  
-} from '@mui/material';
-import { Link } from 'react-router-dom';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SearchBar from '../components/searchBar';
-import  Notification  from '../components/notification';
-import EmailModal from '../components/EmailModal';
-import { useReactToPrint } from 'react-to-print';
-import PrintIcon from '@mui/icons-material/Print';
+import { Button } from 'primereact/button';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { InputText } from 'primereact/inputtext';
+import { Dialog } from 'primereact/dialog';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import 'primeicons/primeicons.css';
+import 'primereact/resources/themes/lara-light-indigo/theme.css';
+import 'primereact/resources/primereact.min.css';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const StudentsList = () => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchValue, setSearchValue] = useState('');
-  const [openDialog, setOpenDialog] = useState(false); // Dialog visibility state
-  const [studentToDelete, setStudentToDelete] = useState(null); // Student to delete
-  const [email, setEmail] = useState('');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [openEmailModal, setOpenEmailModal] = useState(false);
+  const [studentToEmail, setStudentToEmail] = useState(null);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
-  const [openEmailModal, setOpenEmailModal] = useState(false); // Email modal state
-  const [studentToEmail, setStudentToEmail] = useState(null); // Student to email
-  const [notify, setNotify] = useState({isOpen: false, message:'', type:''});
-  const componentPDF = useRef();
+  const navigate = useNavigate();
 
-
-  // Fetch students from the API
+  // Fetch students
   useEffect(() => {
     axios
       .get('http://localhost:3001/api/students')
       .then((response) => {
-        console.log(response.data);
-        setStudents(response.data); // Update the students state with the fetched data
-        setFilteredStudents(response.data); // Initially, all students are displayed
+        setStudents(response.data);
+        setFilteredStudents(response.data);
       })
-      .catch((error) => {
-        console.error('Error fetching students:', error);
-      });
+      .catch((error) => console.error('Error fetching students:', error));
   }, []);
 
-  //generate PDF
-
-  const generatePDF = useReactToPrint({
-    content: () => componentPDF.current,
-
-    
-  })
-
-  // Handle search input change
-  const handleSearchChange = (value) => {
+  // Handle search
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
     setSearchValue(value);
-
-    // Filter students based on multiple fields (id, name, email, phone)
-    const filtered = students.filter((student) => {
-      const searchLower = value.toLowerCase();
-      return (
-        student.id.toString().includes(searchLower) || // Check ID
-        student.name.toLowerCase().includes(searchLower) || 
-        student.email.toLowerCase().includes(searchLower) || 
-        (student.phone && student.phone.toString().includes(searchLower)) || 
-        (student.age && student.age.toString().includes(searchLower))
-      );
-    });
+    const filtered = students.filter((student) =>
+      ['id', 'name', 'email', 'phone', 'age'].some((key) =>
+        student[key]?.toString().toLowerCase().includes(value.toLowerCase())
+      )
+    );
     setFilteredStudents(filtered);
   };
 
-  // Clear the search bar
   const handleClearSearch = () => {
     setSearchValue('');
     setFilteredStudents(students);
   };
-  // Handle email sending
-  const handleEmail = () => {
-    if (studentToEmail) {
-      axios
-        .post('http://localhost:3001/api/send-email', {
-          recipientEmail: studentToEmail.email,
-          subject,
-          description
-        })
-        .then(() => {
-          setNotify({
-            isOpen: true,
-            message: 'Email sent successfully!',
-            type: 'success'
-          });
-          setOpenEmailModal(false); // Close the email modal
-        })
-        .catch((error) => {
-          setNotify({
-            isOpen: true,
-            message: 'Error sending email',
-            type: 'error'
-          });
-          console.error('Error sending email:', error);
-        });
-    }
+
+  // Export to PDF
+  const exportPdf = () => {
+    const doc = new jsPDF();
+    doc.autoTable({
+      head: [['ID', 'Name', 'Age', 'Email', 'Phone']],
+      body: filteredStudents.map(({ id, name, age, email, phone }) => [
+        id,
+        name,
+        age,
+        email,
+        phone,
+      ]),
+    });
+    doc.save('students.pdf');
   };
 
-
-  // Handle delete action
+  // Handle delete
   const handleDelete = () => {
     if (studentToDelete) {
       axios
@@ -128,151 +79,102 @@ const StudentsList = () => {
           );
           setStudents(updatedStudents);
           setFilteredStudents(updatedStudents);
-          setOpenDialog(false); // Close dialog after deletion
-          setNotify({
-            isOpen: true,
-            message: 'Student deleted successfully',
-            type: 'success'
-          })
-
+          setOpenDialog(false);
         })
         .catch((error) => console.error('Error deleting student:', error));
     }
   };
 
-  // Open confirmation dialog
   const openDeleteDialog = (student) => {
-    setStudentToDelete(student); // Set the student to be deleted
-    setOpenDialog(true); // Open the dialog
+    setStudentToDelete(student);
+    setOpenDialog(true);
   };
 
-  // Close confirmation dialog
-  const closeDeleteDialog = () => {
-    setOpenDialog(false); // Close the dialog without deleting
-  };
-
-
-  // Open email modal
+  // Dialog footer for delete confirmation
+  const deleteDialogFooter = (
+    <>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        className="p-button-text"
+        onClick={() => setOpenDialog(false)}
+      />
+      <Button
+        label="Yes"
+        icon="pi pi-check"
+        className="p-button-danger"
+        onClick={handleDelete}
+      />
+    </>
+  );
   const openEmailModalDialog = (student) => {
-    setStudentToEmail(student); // Set the student to email
-    setOpenEmailModal(true); // Open the email modal
+    console.log('Opening email modal for:', student);
+    // Add email modal logic
   };
-
-  const downloadPdf = () => {
-
-  }
+  
 
   return (
-    <Box sx={{ padding: 3 }}>
-      {/* Search Bar */}
-      <SearchBar
-        value={searchValue}
-        onChange={handleSearchChange}
-        onClear={handleClearSearch}
-      />
-      {/* <MaterialTable 
-          title="Student details"
-          columns = {columns}
-          data = {studentData}
-          Actions = {[
-            {
-              icon: () => <PrintIcon />,
-              tooltip: "Export to PDF",
-              onClick: () => downloadPdf(),
-              isFreeAction: true
+    <div className="students-list">
+      <h2>Students List</h2>
+      <div className="p-inputgroup" style={{ marginBottom: '1rem' }}>
+        <InputText
+          value={''} // Replace with state for searchValue
+          onChange={handleSearchChange}
+          placeholder="Search by ID, Name, Email, etc."
+        />
+        <Button label="Clear" icon="pi pi-times" onClick={handleClearSearch} />
+        <Button label="Export PDF" icon="pi pi-file-pdf" onClick={exportPdf} />
+      </div>
 
-            }
-          ]}
-      
-      
-      
-      /> */}
+      <DataTable value={filteredStudents || []} paginator rows={10} responsiveLayout="scroll">
+        <Column field="id" header="id" sortable />
+        <Column field="name" header="Name" sortable />
+        <Column field="age" header="Age" sortable />
+        <Column field="email" header="Email" sortable />
+        <Column field="phone" header="Phone" sortable />
+        <Column
+          header="Actions"
+          body={(student) => (
+            <div className="actions">
+              {/* Update Button */}
+              <Button
+                icon="pi pi-pencil"
+                className="p-button-rounded p-button-primary p-button-text"
+                tooltip="Update"
+                onClick={() => navigate(`/update/${student.id}`)}
+              />
 
-      {/* Table */}
-      <TableContainer component={Paper} sx={{ marginTop: 4, borderRadius: 2, boxShadow: 3 }}>
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{ padding: 2, backgroundColor: '#f5f5f5', fontWeight: 'bold' }}
-        >
-          Students List
-        </Typography>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#e0e0e0' }}>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Age</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredStudents.map((student) => (
-              <TableRow key={student.id} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
-                <TableCell>{student.id}</TableCell>
-                <TableCell>{student.name}</TableCell>
-                <TableCell>{student.age}</TableCell>
-                <TableCell>{student.email}</TableCell>
-                <TableCell>{student.phone}</TableCell>
-                <TableCell align="center">
-                  <Tooltip title="Update">
-                    <IconButton
-                      component={Link}
-                      to={`/update/${student.id}`}
-                      color="primary"
-                      sx={{ marginRight: 1 }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton color="error" onClick={() => openDeleteDialog(student)}>
-                      <DeleteIcon />
-                    </IconButton>
-                    </Tooltip>
-                  <Tooltip title="Send Email">
-                    <IconButton color="primary" onClick={() => openEmailModalDialog(student)}>
-                      {/* <EmailIcon /> You can replace with an email icon */}
-                    </IconButton>
-                  
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              {/* Delete Button */}
+              <Button
+                icon="pi pi-trash"
+                className="p-button-rounded p-button-danger p-button-text"
+                tooltip="Delete"
+                onClick={() => openDeleteDialog(student)}
+              />
 
-      {/* Confirmation Dialog */}
-      <Dialog open={openDialog} onClose={closeDeleteDialog}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <Typography>Do you want to remove this student?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDeleteDialog} color="primary">
-            No
-          </Button>
-          <Button onClick={handleDelete} color="error">
-            Yes
-          </Button>
-        </DialogActions>
+              {/* Send Email Button */}
+              <Button
+                icon="pi pi-envelope"
+                className="p-button-rounded p-button-success p-button-text"
+                tooltip="Send Email"
+                onClick={() => openEmailModalDialog(student)}
+              />
+            </div>
+          )}
+        />
+      </DataTable>
+
+      <Dialog
+        visible={openDialog}
+        style={{ width: '350px' }}
+        header="Confirm Deletion"
+        modal
+        footer={deleteDialogFooter}
+        onHide={() => setOpenDialog(false)}
+      >
+        <p>Are you sure you want to delete this student?</p>
       </Dialog>
-      <EmailModal
-        open={openEmailModal}
-        onClose={() => setOpenEmailModal(false)}
-        onSubmit={handleEmail}
-        subject={subject}
-        setSubject={setSubject}
-        description={description}
-        setDescription={setDescription}
-      />
-      <Notification
-        notify = {notify}
-        setNotify = { setNotify } />
-    </Box>
+    </div>
   );
 };
 
