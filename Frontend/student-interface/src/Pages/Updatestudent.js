@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Typography, TextField, Button, Container } from '@mui/material';
+import { InputText } from 'primereact/inputtext';
+import { Button } from 'primereact/button';
+import { Card } from 'primereact/card';
+import { Messages } from 'primereact/messages';
 
 function UpdateStudent() {
   const { id } = useParams(); // Get the student ID from the URL
   const navigate = useNavigate();
-  
+
   const [student, setStudent] = useState({
     name: '',
     age: '',
@@ -14,21 +17,27 @@ function UpdateStudent() {
     phone: '',
   });
 
-  // Fetch student data 
+  const [messages, setMessages] = useState(null);
+
+  const messagesRef = React.useRef(null);
+
+  // Fetch student data
   useEffect(() => {
-    axios.get(`http://localhost:3001/api/students/${id}`)
-      .then(response => {
-        setStudent(response.data); 
+    axios
+      .get(`http://localhost:3001/api/students/${id}`)
+      .then((response) => {
+        setStudent(response.data);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('Error fetching student:', error);
+        setMessages([{ severity: 'error', summary: 'Error', detail: 'Failed to fetch student data' }]);
       });
   }, [id]);
 
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setStudent(prevState => ({
+    setStudent((prevState) => ({
       ...prevState,
       [name]: value,
     }));
@@ -37,73 +46,109 @@ function UpdateStudent() {
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.put(`http://localhost:3001/api/students/${id}`, student)
-      .then(response => {
+    axios
+      .put(`http://localhost:3001/api/students/${id}`, student)
+      .then((response) => {
         console.log('Student updated:', response.data);
-        navigate('/StudentsList'); // Redirect to the student list page after updating
+        if (messagesRef.current) {
+          messagesRef.current.show([
+            { severity: 'success', summary: 'Success', detail: 'Student updated successfully!' },
+          ]);
+        }
+        setTimeout(() => {
+          navigate('/students'); // Redirect to the student list page after a short delay
+        }, 2000); // 2-second delay
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('Error updating student:', error);
+        setMessages([{ severity: 'error', summary: 'Error', detail: 'Failed to update student data' }]);
       });
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Update Student
-        </Typography>
-        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-          <TextField
-            label="Name"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            name="name"
-            value={student.name}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Age"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            type="number"
-            name="age"
-            value={student.age}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Email"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            type="email"
-            name="email"
-            value={student.email}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Phone"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            name="phone"
-            value={student.phone}
-            onChange={handleChange}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            sx={{ mt: 2 }}
-          >
-            Update Student
-          </Button>
+    <div className="update-student">
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+    <Messages
+      ref={messagesRef}
+      style={{
+        maxWidth: '300px', // Adjust the width of the message box
+        textAlign: 'center', // Center-align the text inside the message box
+      }}
+    />
+    </div>
+      <Card title="Update Student" className="p-shadow-4" style={{ maxWidth: '400px', margin: '2rem auto' }}>
+        
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ width: '100%' }}>
+            <label htmlFor="name" style={{ display: 'block', marginBottom: '0.5rem' }}>
+              Name
+            </label>
+            <InputText
+              id="name"
+              name="name"
+              value={student.name}
+              onChange={handleChange}
+              placeholder="Enter student name"
+              required
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div style={{ width: '100%' }}>
+            <label htmlFor="age" style={{ display: 'block', marginBottom: '0.5rem' }}>
+              Age
+            </label>
+            <InputText
+              id="age"
+              name="age"
+              value={student.age}
+              onChange={handleChange}
+              placeholder="Enter student age"
+              required
+              type="number"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div style={{ width: '100%' }}>
+            <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem' }}>
+              Email
+            </label>
+            <InputText
+              id="email"
+              name="email"
+              value={student.email}
+              onChange={handleChange}
+              placeholder="Enter student email"
+              required
+              type="email"
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div style={{ width: '100%' }}>
+            <label htmlFor="phone" style={{ display: 'block', marginBottom: '0.5rem' }}>
+              Phone
+            </label>
+            <InputText
+              id="phone"
+              name="phone"
+              value={student.phone}
+              onChange={handleChange}
+              placeholder="Enter student phone number"
+              required
+              style={{ width: '100%' }}
+            />
+          </div>
+          <Button label="Update Student" icon="pi pi-check" className="p-button-primary" type="submit" />
         </form>
-      </Box>
-    </Container>
+      </Card>
+    </div>
   );
 }
 

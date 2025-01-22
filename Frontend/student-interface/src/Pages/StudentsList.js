@@ -23,6 +23,8 @@ const StudentsList = () => {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const navigate = useNavigate();
+  const [selectedStudents, setSelectedStudents] = useState([]); // State pour les étudiants sélectionnés
+
 
   // Fetch students
   useEffect(() => {
@@ -67,6 +69,39 @@ const StudentsList = () => {
     });
     doc.save('students.pdf');
   };
+
+  // Function to export a single student's data as a PDF
+ const exportStudentPdf = (student) => {
+  const doc = new jsPDF();
+  doc.text(`Student Details`, 10, 10);
+  doc.text(`ID: ${student.id}`, 10, 20);
+  doc.text(`Name: ${student.name}`, 10, 30);
+  doc.text(`Age: ${student.age}`, 10, 40);
+  doc.text(`Email: ${student.email}`, 10, 50);
+  doc.text(`Phone: ${student.phone}`, 10, 60);
+  doc.save(`${student.name}_details.pdf`);
+ };
+
+ // Nouvelle fonction pour exporter les étudiants sélectionnés
+ const exportSelectedPdf = () => {
+  if (selectedStudents.length === 0) {
+    alert('Veuillez sélectionner des étudiants à exporter');
+    return;
+  }
+
+  const doc = new jsPDF();
+  doc.autoTable({
+    head: [['ID', 'Name', 'Age', 'Email', 'Phone']],
+    body: selectedStudents.map(({ id, name, age, email, phone }) => [
+      id,
+      name,
+      age,
+      email,
+      phone,
+    ]),
+  });
+  doc.save('students_selected.pdf');
+ };
 
   // Handle delete
   const handleDelete = () => {
@@ -117,16 +152,37 @@ const StudentsList = () => {
     <div className="students-list">
       <h2>Students List</h2>
       <div className="p-inputgroup" style={{ marginBottom: '1rem' }}>
+        {/* Search Bar */}
         <InputText
-          value={''} // Replace with state for searchValue
-          onChange={handleSearchChange}
+          value={searchValue} // Bind the state to the input
+          onChange={handleSearchChange} // Update the state on change
           placeholder="Search by ID, Name, Email, etc."
         />
-        <Button label="Clear" icon="pi pi-times" onClick={handleClearSearch} />
-        <Button label="Export PDF" icon="pi pi-file-pdf" onClick={exportPdf} />
+        {/* Clear Button */}
+        <Button icon="pi pi-times" onClick={handleClearSearch} />
+        {/* Export PDF Button */}
+        <Button
+          icon="pi pi-file-pdf" // Icon for PDF export
+          className="p-button-rounded p-button-warning p-button-text" // Matches the "X" button styling
+          onClick={exportPdf}
+          tooltip="Export PDF" // Tooltip for accessibility
+          tooltipOptions={{ position: 'top' }} // Optional: Tooltip position
+        />
+        {/* Bouton Export PDF des étudiants sélectionnés */}
+        <Button
+                icon="pi pi-file-pdf"
+                className="p-button-rounded p-button-info p-button-text"
+                onClick={exportSelectedPdf} // Nouvelle fonction pour les étudiants sélectionnés
+                tooltip="Exporter PDF des étudiants sélectionnés"
+                tooltipOptions={{ position: 'top' }}
+              />
+
       </div>
 
-      <DataTable value={filteredStudents || []} paginator rows={10} responsiveLayout="scroll">
+      <DataTable
+       value={filteredStudents || []} paginator rows={10} responsiveLayout="scroll" selection={selectedStudents} onSelectionChange={(e) => setSelectedStudents(e.value)} dataKey="id" >
+        <Column selectionMode="multiple" style={{ width: '3em' }} /> {/* Colonne de sélection */}
+
         <Column field="id" header="id" sortable />
         <Column field="name" header="Name" sortable />
         <Column field="age" header="Age" sortable />
@@ -159,6 +215,14 @@ const StudentsList = () => {
                 tooltip="Send Email"
                 onClick={() => openEmailModalDialog(student)}
               />
+               {/* Export Student PDF Button */}
+              <Button
+                icon="pi pi-file-pdf"
+                className="p-button-rounded p-button-warning p-button-text"
+                tooltip="Export PDF"
+                onClick={() => exportStudentPdf(student)}
+              />
+              
             </div>
           )}
         />
