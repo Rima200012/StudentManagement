@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(bodyParser.json());
@@ -34,9 +34,8 @@ app.use((req, res, next) => {
 
 
 
-
 require("./app/routes/student.routes")(app);
-/*require("./app/routes/EmailRoutes")(app);*/
+require("./app/routes/authRoutes")(app);
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => console.log(`Listening on port ${port}...`));

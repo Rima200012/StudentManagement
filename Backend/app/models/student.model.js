@@ -6,6 +6,9 @@ const Student = function(student) {
     this.age = student.age;
     this.email = student.email;
     this.phone = student.phone;
+    this.gender = student.gender;
+    this.userType = student.userType;
+    this.class= student.class
   };
 
 //create student(add)
@@ -114,6 +117,26 @@ Student.removeAll = result => {
       console.log(`deleted ${res.affectedRows} students`);
       result(null, res);
     });
+};
+
+// Find student by email
+Student.findByEmail = (email, result) => {
+  sql.query("SELECT * FROM students WHERE email = ?", [email], (err, res) => {
+      if (err) {
+          console.log("error: ", err);
+          result(err, null);
+          return;
+      }
+
+      if (res.length) {
+          console.log("found student: ", res[0]);
+          result(null, res[0]);
+          return;
+      }
+
+      // student not found
+      result(null, null);
+  });
 };
   
 module.exports = Student;

@@ -11,7 +11,11 @@ exports.create = (req, res) => {
         name: req.body.name,
         age: req.body.age,
         email: req.body.email,
-        phone: req.body.phone
+        phone: req.body.phone,
+        gender: req.body.gender,
+        userType: req.body.userType,
+        class: req.body.class
+
     });
 
     //save student in db

@@ -1,142 +1,158 @@
-import React, { useState} from "react";
-import axios from 'axios';
-import { useForm } from 'react-hook-form';
+import React, { useRef, useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, TextField, Button } from '@mui/material';
-import Notification from "../components/notification";
-
-
-
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Card } from "primereact/card";
+import { Toast } from "primereact/toast";
 
 const StudentRegistration = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    age: "",
+    email: "",
+    phone: "",
+  });
 
-    
-    const { register, formState:{errors}, handleSubmit } = useForm();
-    const navigate = useNavigate();
-    const [notify, setNotify] = useState({isOpen: false, message:'', type:''});
-    
-    const onSubmit = (data) => {
-        axios.post('http://localhost:3001/api/students', data) 
-          .then(response => {
-            console.log('Form Data Submitted:', response.data);
-            //alert('Student Registered Successfully!');
-            navigate('/students');
-            setNotify({
-              isOpen: true,
-              message: 'Student Registered successfully',
-              type: 'success'
-            });
-          })
-          
-          .catch((error) => {
-            console.error('Error registering student:', error);
-            setNotify({
-                isOpen: true,
-                message: 'Error registering student',
-                type: 'error'
-            });
+  const [errors, setErrors] = useState({});
+  const toast = useRef(null);
+  const navigate = useNavigate();
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.name) newErrors.name = "Name is required";
+    if (!formData.age || formData.age < 1) newErrors.age = "Valid age is required";
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Valid email is required";
+    }
+    if (!formData.phone || !/^[0-9]{8,15}$/.test(formData.phone)) {
+      newErrors.phone = "Valid phone number is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (validate()) {
+      axios
+        .post("http://localhost:3001/api/students", formData)
+        .then(() => {
+          toast.current.show({
+            severity: "success",
+            summary: "Success",
+            detail: "Student Registered Successfully",
           });
-    };
-    return (
-        <Box
-          sx={{
-            maxWidth: 500,
-            margin: '50px auto',
-            padding: 3,
-            boxShadow: 3,
-            borderRadius: 2,
-            backgroundColor: 'white',
+          setTimeout(() => navigate("/students"), 2000);
+        })
+        .catch(() => {
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to register student",
+          });
+        });
+    } else {
+      toast.current.show({
+        severity: "error",
+        summary: "Validation Error",
+        detail: "Please fill out all required fields correctly",
+      });
+    }
+  };
+
+  return (
+    <div className="student-registration" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <Toast ref={toast} />
+      <Card title="Student Registration" className="p-shadow-4" style={{ maxWidth: "400px", margin: "2rem auto" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1rem",
           }}
         >
-          <Typography variant="h4" gutterBottom align="center">
-            Student Registration
-          </Typography>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            {/* Name Field */}
-            <TextField
-              fullWidth
-              label="Name"
-              variant="outlined"
-              margin="normal"
-              {...register('name', { required: 'Name is required' })}
-              error={!!errors.name}
-              helperText={errors.name?.message}
+          {/* Name Field */}
+          <div style={{ width: "100%" }}>
+            <label htmlFor="name" style={{ display: "block", marginBottom: "0.5rem" }}>
+              Name
+            </label>
+            <InputText
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className={errors.name ? "p-invalid" : ""}
+              style={{ width: "100%" }}
             />
-    
-            {/* Age Field */}
-            <TextField
-              fullWidth
-              label="Age"
-              type="number"
-              variant="outlined"
-              margin="normal"
-              {...register('age', {
-                required: 'Age is required',
-                min: { value: 1, message: 'Age must be at least 1' },
-              })}
-              error={!!errors.age}
-              helperText={errors.age?.message}
-            />
-    
-            {/* Email Field */}
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              variant="outlined"
-              margin="normal"
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/,
-                  message: 'Invalid email address',
-                },
-              })}
-              error={!!errors.email}
-              helperText={errors.email?.message}
-            />
-    
-            {/* Phone Field */}
-            <TextField
-              fullWidth
-              label="Phone"
-              type="tel"
-              variant="outlined"
-              margin="normal"
-              {...register('phone', {
-                required: 'Phone number is required',
-                pattern: {
-                  value: /^[0-9]{8,15}$/,
-                  message: 'Phone number must be 8-15 digits',
-                },
-              })}
-              error={!!errors.phone}
-              helperText={errors.phone?.message}
-            />
-    
-            {/* Submit Button */}
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ marginTop: 2 }}
-            >
-              Register
-            </Button>
-          </form>
-          <Notification
-                  notify = {notify}
-                  setNotify = { setNotify } />
-        </Box>
-      );
-    
+            {errors.name && <small className="p-error">{errors.name}</small>}
+          </div>
 
-   
-    
+          {/* Age Field */}
+          <div style={{ width: "100%" }}>
+            <label htmlFor="age" style={{ display: "block", marginBottom: "0.5rem" }}>
+              Age
+            </label>
+            <InputText
+              id="age"
+              name="age"
+              type="number"
+              value={formData.age}
+              onChange={handleInputChange}
+              className={errors.age ? "p-invalid" : ""}
+              style={{ width: "100%" }}
+            />
+            {errors.age && <small className="p-error">{errors.age}</small>}
+          </div>
+
+          {/* Email Field */}
+          <div style={{ width: "100%" }}>
+            <label htmlFor="email" style={{ display: "block", marginBottom: "0.5rem" }}>
+              Email
+            </label>
+            <InputText
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className={errors.email ? "p-invalid" : ""}
+              style={{ width: "100%" }}
+            />
+            {errors.email && <small className="p-error">{errors.email}</small>}
+          </div>
+
+          {/* Phone Field */}
+          <div style={{ width: "100%" }}>
+            <label htmlFor="phone" style={{ display: "block", marginBottom: "0.5rem" }}>
+              Phone
+            </label>
+            <InputText
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              className={errors.phone ? "p-invalid" : ""}
+              style={{ width: "100%" }}
+            />
+            {errors.phone && <small className="p-error">{errors.phone}</small>}
+          </div>
+
+          {/* Submit Button */}
+          <Button label="Register" icon="pi pi-check" className="p-button-success" type="submit" />
+        </form>
+      </Card>
+    </div>
+  );
 };
 
 export default StudentRegistration;
-
-
-
